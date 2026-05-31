@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Давление">
+<meta name="theme-color" content="#0a0c10">
+<title>Давление</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg: #0a0c10;
+  --surface: #13161e;
+  --card: #1a1e28;
+  --border: #242836;
+  --accent: #e8604c;
+  --accent2: #5b8dee;
+  --morning: #f5a623;
+  --evening: #7c6ee0;
+  --text: #f0f2f7;
+  --muted: #7a8499;
+  --safe: #3dd68c;
+  --warn: #f5a623;
+  --danger: #e8604c;
+  --safe-bg: rgba(61,214,140,0.1);
+  --warn-bg: rgba(245,166,35,0.1);
+  --danger-bg: rgba(232,96,76,0.1);
+  --r: 18px;
+  --safe-inset: env(safe-area-inset-top, 44px);
+  --safe-bottom: env(safe-area-inset-bottom, 34px);
+}
+
+html, body {
+  height: 100%; width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  overflow: hidden;
+  position: fixed;
+}
+
+/* ── LAYOUT ── */
+#app { height: 100%; display: flex; flex-direction: column; }
+
+/* NAV */
+.nav {
+  display: flex;
+  justify-content: space-around;
+  background: rgba(10,12,16,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  padding-bottom: var(--safe-bottom);
+  flex-shrink: 0;
+  order: 2;
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 4px; padding: 10px 0 6px;
+  background: none; border: none; color: var(--muted);
+  font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 500;
+  letter-spacing: 0.03em; cursor: pointer; transition: color 0.2s;
+}
+.nav-btn svg { width: 22px; height: 22px; }
+.nav-btn.active { color: var(--accent); }
+.nav-btn.active svg { filter: drop-shadow(0 0 6px rgba(232,96,76,0.5)); }
+
+/* SCREENS */
+.screens { flex: 1; overflow: hidden; order: 1; position: relative; }
+.screen {
+  position: absolute; inset: 0;
+  overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  display: none;
+  padding-top: calc(var(--safe-inset) + 8px);
+  padding-bottom: 16px;
+}
+.screen.active { display: block; }
+.screen-inner { padding: 0 16px; }
+
+/* TYPOGRAPHY */
+.page-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px; font-weight: 400;
+  margin-bottom: 4px; color: var(--text);
+}
+.page-sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+/* ── ADD SCREEN ── */
+.time-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 24px; padding: 6px 14px;
+  font-size: 13px; color: var(--muted);
+  margin-bottom: 24px;
+}
+.time-badge .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.field-group { margin-bottom: 20px; }
+.field-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  display: block;
+}
+.field-row { display: grid; grid-template-columns: 1fr 20px 1fr; align-items: center; gap: 8px; }
+.field-sep { text-align: center; color: var(--muted); font-size: 18px; font-weight: 300; }
+
+input[type="number"] {
+  width: 100%; background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 14px; color: var(--text);
+  font-family: 'DM Serif Display', serif; font-size: 32px;
+  text-align: center; padding: 14px 8px;
+  -webkit-appearance: none; appearance: none;
+  outline: none; transition: border-color 0.2s;
+}
+input[type="number"]:focus { border-color: var(--accent); }
+input[type="number"]::placeholder { color: var(--border); font-size: 28px; }
+
+.pulse-field input[type="number"] { font-size: 32px; }
+
+.note-input {
+  width: 100%; background: var(--card); border: 1.5px solid var(--border);
+  border-radius: 14px; color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 15px;
+  padding: 13px 16px; outline: none; resize: none;
+  transition: border-color 0.2s; margin-bottom: 24px;
+}
+.note-input:focus { border-color: var(--accent2); }
+.note-input::placeholder { color: var(--muted); }
+
+.btn-save {
+  width: 100%; padding: 17px;
+  background: var(--accent); border: none; border-radius: var(--r);
+  color: white; font-family: 'DM Sans', sans-serif;
+  font-size: 16px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 4px 24px rgba(232,96,76,0.35);
+  transition: transform 0.1s, box-shadow 0.1s;
+  letter-spacing: 0.01em;
+}
+.btn-save:active { transform: scale(0.97); box-shadow: 0 2px 12px rgba(232,96,76,0.2); }
+
+/* kerdo preview */
+.kerdo-preview {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 14px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px; opacity: 0; transition: opacity 0.3s;
+}
+.kerdo-preview.visible { opacity: 1; }
+.kp-label { font-size: 12px; color: var(--muted); }
+.kp-val { font-family: 'DM Serif Display', serif; font-size: 26px; }
+.kp-type { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+
+/* ── HISTORY SCREEN ── */
+.date-group { margin-bottom: 16px; }
+.date-header {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--muted);
+  padding: 0 4px; margin-bottom: 8px;
+}
+.entry-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 14px 16px;
+  margin-bottom: 8px; display: flex; align-items: center; gap: 12px;
+  animation: slideIn 0.25s ease;
+}
+@keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.entry-time-tag {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.entry-time-tag.morning { background: rgba(245,166,35,0.12); }
+.entry-time-tag.evening { background: rgba(124,110,224,0.12); }
+.entry-time-tag.other { background: rgba(91,141,238,0.12); }
+
+.entry-main { flex: 1; }
+.entry-bp { font-family: 'DM Serif Display', serif; font-size: 20px; line-height: 1; }
+.entry-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.entry-right { text-align: right; }
+.entry-kerdo { font-family: 'DM Serif Display', serif; font-size: 18px; }
+.entry-ktype { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-top: 3px; display: inline-block; }
+
+.delete-btn {
+  background: none; border: none; color: var(--muted);
+  font-size: 18px; cursor: pointer; padding: 4px; flex-shrink: 0;
+}
+
+.empty-state {
+  text-align: center; padding: 60px 20px;
+  color: var(--muted); font-size: 14px; line-height: 1.6;
+}
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+/* ── STATS SCREEN ── */
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.stat-tile {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 14px;
+}
+.stat-tile.wide { grid-column: 1/-1; }
+.st-label { font-size: 10px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.st-val { font-family: 'DM Serif Display', serif; font-size: 28px; line-height: 1; }
+.st-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+.dist-bar { display: flex; border-radius: 8px; overflow: hidden; height: 10px; margin: 10px 0 6px; }
+.dist-seg { height: 100%; transition: width 0.5s ease; }
+.dist-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+
+.trend-list { margin-top: 8px; }
+.trend-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.trend-item:last-child { border-bottom: none; }
+.trend-label { color: var(--muted); font-size: 12px; }
+
+/* chart */
+.mini-chart { width: 100%; height: 90px; }
+
+/* advice tile */
+.advice-tile {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 14px 16px;
+  margin-bottom: 10px; font-size: 13px; line-height: 1.6; color: var(--muted);
+}
+.advice-tile strong { color: var(--text); }
+.advice-icon { font-size: 20px; margin-bottom: 6px; display: block; }
+
+/* classification helpers */
+.sym { color: var(--danger); }
+.eut { color: var(--safe); }
+.vag { color: var(--accent2); }
+.sym-bg { background: var(--danger-bg); color: var(--danger); }
+.eut-bg { background: var(--safe-bg); color: var(--safe); }
+.vag-bg { background: rgba(91,141,238,0.12); color: var(--accent2); }
+
+/* toast */
+.toast {
+  position: fixed; bottom: calc(var(--safe-bottom) + 72px); left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--safe); color: #0a0c10;
+  font-size: 13px; font-weight: 600;
+  padding: 10px 20px; border-radius: 24px;
+  opacity: 0; transition: all 0.3s; pointer-events: none;
+  white-space: nowrap; z-index: 999;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* scrollbar */
+::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="screens">
+
+    <!-- ═══ ADD ═══ -->
+    <div class="screen active" id="screen-add">
+      <div class="screen-inner">
+        <p class="page-title">Измерение</p>
+        <p class="page-sub">Введите показатели тонометра</p>
+
+        <div class="time-badge" id="timeBadge">
+          <span class="dot" id="timeDot"></span>
+          <span id="timeLabel"></span>
+        </div>
+
+        <div class="field-group">
+          <span class="field-label">Артериальное давление</span>
+          <div class="field-row">
+            <input type="number" id="sys" placeholder="120" min="60" max="220" inputmode="numeric">
+            <span class="field-sep">/</span>
+            <input type="number" id="dia" placeholder="80" min="30" max="130" inputmode="numeric">
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;padding:0 4px">
+            <span style="font-size:11px;color:var(--muted)">сист. (верхнее)</span>
+            <span style="font-size:11px;color:var(--muted)">диаст. (нижнее)</span>
+          </div>
+        </div>
+
+        <div class="field-group pulse-field">
+          <span class="field-label">Пульс</span>
+          <input type="number" id="pulse" placeholder="70" min="30" max="200" inputmode="numeric" style="max-width:140px">
+          <span style="font-size:11px;color:var(--muted);margin-left:6px">уд/мин</span>
+        </div>
+
+        <div class="kerdo-preview" id="kerdoPreview">
+          <div>
+            <div class="kp-label">Индекс Кердо</div>
+            <div class="kp-val" id="kpVal">—</div>
+          </div>
+          <span class="kp-type" id="kpType">—</span>
+        </div>
+
+        <textarea class="note-input" id="note" placeholder="Заметка (необязательно)" rows="2"></textarea>
+
+        <button class="btn-save" onclick="saveEntry()">Сохранить</button>
+      </div>
+    </div>
+
+    <!-- ═══ HISTORY ═══ -->
+    <div class="screen" id="screen-history">
+      <div class="screen-inner">
+        <p class="page-title">История</p>
+        <p class="page-sub" id="histSub">Все измерения</p>
+        <div id="historyList"></div>
+      </div>
+    </div>
+
+    <!-- ═══ STATS ═══ -->
+    <div class="screen" id="screen-stats">
+      <div class="screen-inner">
+        <p class="page-title">Статистика</p>
+        <p class="page-sub" id="statsSub">Анализ за всё время</p>
+        <div id="statsContent"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <nav class="nav">
+    <button class="nav-btn active" onclick="goto('add')" id="nav-add">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Добавить
+    </button>
+    <button class="nav-btn" onclick="goto('history')" id="nav-history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+      История
+    </button>
+    <button class="nav-btn" onclick="goto('stats')" id="nav-stats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Анализ
+    </button>
+  </nav>
+</div>
+
+<div class="toast" id="toast">✓ Сохранено</div>
+
+<script>
+// ── STORAGE ──
+const STORE_KEY = 'bp_entries_v2';
+function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch { return []; } }
+function save(data) { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+
+// ── UTILS ──
+function kerdo(dia, pulse) { return Math.round((1 - dia / pulse) * 100); }
+function classify(k) {
+  if (k > 5) return { label: 'Симпатикотония', cls: 'sym', bg: 'sym-bg' };
+  if (k < -5) return { label: 'Ваготония', cls: 'vag', bg: 'vag-bg' };
+  return { label: 'Эйтония', cls: 'eut', bg: 'eut-bg' };
+}
+function timeOfDay(hour) {
+  if (hour >= 5 && hour < 12) return { tag: 'morning', icon: '☀️', label: 'Утро' };
+  if (hour >= 12 && hour < 18) return { tag: 'day', icon: '🌤', label: 'День' };
+  if (hour >= 18 && hour < 23) return { tag: 'evening', icon: '🌙', label: 'Вечер' };
+  return { tag: 'other', icon: '🌃', label: 'Ночь' };
+}
+function fmtDate(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+function fmtTime(ts) {
+  const d = new Date(ts);
+  return d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+}
+function groupByDate(entries) {
+  const groups = {};
+  entries.forEach(e => {
+    const key = new Date(e.ts).toDateString();
+    if (!groups[key]) groups[key] = { label: fmtDate(e.ts), items: [] };
+    groups[key].items.push(e);
+  });
+  return Object.values(groups);
+}
+function avg(arr) { return arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : 0; }
+
+// ── TIME BADGE ──
+function updateTimeBadge() {
+  const now = new Date();
+  const tod = timeOfDay(now.getHours());
+  const label = document.getElementById('timeLabel');
+  const dot = document.getElementById('timeDot');
+  label.textContent = `${tod.icon} ${tod.label} · ${fmtTime(Date.now())}`;
+  dot.style.background = tod.tag === 'morning' ? 'var(--morning)' : tod.tag === 'evening' ? 'var(--evening)' : 'var(--accent2)';
+}
+updateTimeBadge();
+setInterval(updateTimeBadge, 30000);
+
+// ── KERDO PREVIEW ──
+function updatePreview() {
+  const dia = parseInt(document.getElementById('dia').value);
+  const pulse = parseInt(document.getElementById('pulse').value);
+  const preview = document.getElementById('kerdoPreview');
+  if (dia > 0 && pulse > 0) {
+    const k = kerdo(dia, pulse);
+    const c = classify(k);
+    document.getElementById('kpVal').textContent = (k > 0 ? '+' : '') + k;
+    document.getElementById('kpVal').className = 'kp-val ' + c.cls;
+    document.getElementById('kpType').textContent = c.label;
+    document.getElementById('kpType').className = 'kp-type ' + c.bg;
+    preview.classList.add('visible');
+  } else {
+    preview.classList.remove('visible');
+  }
+}
+document.getElementById('dia').addEventListener('input', updatePreview);
+document.getElementById('pulse').addEventListener('input', updatePreview);
+
+// ── SAVE ──
+function saveEntry() {
+  const sys = parseInt(document.getElementById('sys').value);
+  const dia = parseInt(document.getElementById('dia').value);
+  const pulse = parseInt(document.getElementById('pulse').value);
+  if (!sys || !dia || !pulse) { showToast('⚠️ Заполните все поля', '#f5a623'); return; }
+  if (sys < 60 || sys > 220 || dia < 30 || dia > 130 || pulse < 30 || pulse > 200) {
+    showToast('⚠️ Проверьте значения', '#f5a623'); return;
+  }
+  const entries = load();
+  entries.unshift({ id: Date.now(), ts: Date.now(), sys, dia, pulse, note: document.getElementById('note').value.trim() });
+  save(entries);
+  document.getElementById('sys').value = '';
+  document.getElementById('dia').value = '';
+  document.getElementById('pulse').value = '';
+  document.getElementById('note').value = '';
+  document.getElementById('kerdoPreview').classList.remove('visible');
+  showToast('✓ Сохранено');
+  setTimeout(() => goto('history'), 600);
+}
+
+// ── TOAST ──
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color || 'var(--safe)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── NAVIGATION ──
+function goto(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + screen).classList.add('active');
+  document.getElementById('nav-' + screen).classList.add('active');
+  if (screen === 'history') renderHistory();
+  if (screen === 'stats') renderStats();
+}
+
+// ── HISTORY ──
+function renderHistory() {
+  const entries = load();
+  const sub = document.getElementById('histSub');
+  const list = document.getElementById('historyList');
+  if (!entries.length) {
+    sub.textContent = 'Нет измерений';
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div>Пока нет ни одного измерения.<br>Нажмите «Добавить» чтобы начать.</div>`;
+    return;
+  }
+  sub.textContent = `Всего измерений: ${entries.length}`;
+  const groups = groupByDate(entries);
+  list.innerHTML = groups.map(g => `
+    <div class="date-group">
+      <div class="date-header">${g.label}</div>
+      ${g.items.map(e => entryCard(e)).join('')}
+    </div>
+  `).join('');
+}
+
+function entryCard(e) {
+  const k = kerdo(e.dia, e.pulse);
+  const c = classify(k);
+  const tod = timeOfDay(new Date(e.ts).getHours());
+  return `<div class="entry-card" id="entry-${e.id}">
+    <div class="entry-time-tag ${tod.tag}">${tod.icon}</div>
+    <div class="entry-main">
+      <div class="entry-bp">${e.sys}<span style="color:var(--muted);font-size:14px">/</span>${e.dia}</div>
+      <div class="entry-meta">Пульс ${e.pulse} · ${fmtTime(e.ts)}${e.note ? ' · ' + e.note : ''}</div>
+    </div>
+    <div class="entry-right">
+      <div class="entry-kerdo ${c.cls}">${k > 0 ? '+' : ''}${k}</div>
+      <div class="entry-ktype ${c.bg}">${c.label.replace('Симпатикотония','Симп.').replace('Ваготония','Ваго.').replace('Эйтония','Эйт.')}</div>
+    </div>
+    <button class="delete-btn" onclick="deleteEntry(${e.id})">×</button>
+  </div>`;
+}
+
+function deleteEntry(id) {
+  const entries = load().filter(e => e.id !== id);
+  save(entries);
+  renderHistory();
+}
+
+// ── STATS ──
+function renderStats() {
+  const entries = load();
+  const el = document.getElementById('statsContent');
+  const sub = document.getElementById('statsSub');
+  if (entries.length < 2) {
+    sub.textContent = 'Недостаточно данных';
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div>Добавьте минимум 2 измерения<br>для анализа статистики.</div>`;
+    return;
+  }
+
+  sub.textContent = `${entries.length} измерений`;
+
+  const kvals = entries.map(e => kerdo(e.dia, e.pulse));
+  const symN = kvals.filter(k => k > 5).length;
+  const vagN = kvals.filter(k => k < -5).length;
+  const eutN = kvals.filter(k => k >= -5 && k <= 5).length;
+  const symPct = Math.round(symN / kvals.length * 100);
+  const vagPct = Math.round(vagN / kvals.length * 100);
+  const eutPct = Math.round(eutN / kvals.length * 100);
+
+  const avgSys = avg(entries.map(e => e.sys));
+  const avgDia = avg(entries.map(e => e.dia));
+  const avgPulse = avg(entries.map(e => e.pulse));
+  const avgK = avg(kvals);
+  const maxK = Math.max(...kvals);
+  const minK = Math.min(...kvals);
+
+  // morning vs evening
+  const morning = entries.filter(e => { const h = new Date(e.ts).getHours(); return h >= 5 && h < 12; });
+  const evening = entries.filter(e => { const h = new Date(e.ts).getHours(); return h >= 18 && h < 23; });
+  const mK = morning.length ? avg(morning.map(e => kerdo(e.dia, e.pulse))) : null;
+  const eK = evening.length ? avg(evening.map(e => kerdo(e.dia, e.pulse))) : null;
+  const mSys = morning.length ? avg(morning.map(e => e.sys)) : null;
+  const eSys = evening.length ? avg(evening.map(e => e.sys)) : null;
+  const mPulse = morning.length ? avg(morning.map(e => e.pulse)) : null;
+  const ePulse = evening.length ? avg(evening.map(e => e.pulse)) : null;
+
+  const cAvg = classify(avgK);
+
+  // SVG mini chart (last 20 entries)
+  const chartData = [...entries].reverse().slice(-20);
+  const chartSVG = miniChart(chartData);
+
+  // Advice
+  let advice = '';
+  if (avgK > 15) {
+    advice = `<div class="advice-tile"><span class="advice-icon">⚠️</span><strong>Выраженная симпатикотония.</strong> Средний индекс ${avgK > 0 ? '+' : ''}${avgK}. Рекомендуется обратиться к врачу. Практикуйте дыхание 4-7-8 и аэробные нагрузки.</div>`;
+  } else if (avgK > 5) {
+    advice = `<div class="advice-tile"><span class="advice-icon">💡</span><strong>Умеренная симпатикотония.</strong> Помогут: дыхательные практики, умеренная ходьба 30 мин/день, магний вечером, ограничение кофеина.</div>`;
+  } else if (avgK < -5) {
+    advice = `<div class="advice-tile"><span class="advice-icon">💡</span><strong>Ваготония.</strong> Больше двигательной активности, контрастный душ, умеренные кардионагрузки.</div>`;
+  } else {
+    advice = `<div class="advice-tile"><span class="advice-icon">✅</span><strong>Вегетативный баланс в норме.</strong> Эйтония — оптимальное состояние. Продолжайте текущий режим.</div>`;
+  }
+
+  if (mPulse && ePulse && mPulse > ePulse + 8) {
+    advice += `<div class="advice-tile"><span class="advice-icon">🌅</span><strong>Утренний пульс выше вечернего</strong> (${mPulse} vs ${ePulse}). Возможно нарушение качества сна. Вставайте плавно, не резко.</div>`;
+  }
+
+  el.innerHTML = `
+    <div class="stats-row">
+      <div class="stat-tile">
+        <div class="st-label">Среднее АД</div>
+        <div class="st-val" style="font-size:22px">${avgSys}/${avgDia}</div>
+        <div class="st-sub">мм рт. ст.</div>
+      </div>
+      <div class="stat-tile">
+        <div class="st-label">Средний пульс</div>
+        <div class="st-val">${avgPulse}</div>
+        <div class="st-sub">уд/мин</div>
+      </div>
+    </div>
+
+    <div class="stat-tile wide" style="margin-bottom:10px">
+      <div class="st-label">Средний индекс Кердо</div>
+      <div class="st-val ${cAvg.cls}">${avgK > 0 ? '+' : ''}${avgK} <span style="font-size:16px;opacity:0.7">${cAvg.label}</span></div>
+      <div class="dist-bar" style="margin-top:12px">
+        <div class="dist-seg" style="width:${symPct}%;background:var(--danger)"></div>
+        <div class="dist-seg" style="width:${eutPct}%;background:var(--safe)"></div>
+        <div class="dist-seg" style="width:${vagPct}%;background:var(--accent2)"></div>
+      </div>
+      <div class="dist-labels">
+        <span style="color:var(--danger)">Симп. ${symPct}%</span>
+        <span style="color:var(--safe)">Эйт. ${eutPct}%</span>
+        <span style="color:var(--accent2)">Ваго. ${vagPct}%</span>
+      </div>
+    </div>
+
+    ${mK !== null || eK !== null ? `
+    <div class="stat-tile wide" style="margin-bottom:10px">
+      <div class="st-label">Утро vs Вечер</div>
+      <div class="trend-list">
+        ${mK !== null ? `<div class="trend-item"><span>☀️ Кердо утром</span><span class="${classify(mK).cls}" style="font-family:'DM Serif Display'">${mK > 0 ? '+' : ''}${mK}</span></div>` : ''}
+        ${eK !== null ? `<div class="trend-item"><span>🌙 Кердо вечером</span><span class="${classify(eK).cls}" style="font-family:'DM Serif Display'">${eK > 0 ? '+' : ''}${eK}</span></div>` : ''}
+        ${mSys !== null ? `<div class="trend-item"><span>☀️ АД утром</span><span>${mSys}/${avg(morning.map(e=>e.dia))}</span></div>` : ''}
+        ${eSys !== null ? `<div class="trend-item"><span>🌙 АД вечером</span><span>${eSys}/${avg(evening.map(e=>e.dia))}</span></div>` : ''}
+      </div>
+    </div>` : ''}
+
+    <div class="stat-tile wide" style="margin-bottom:10px">
+      <div class="st-label">Динамика индекса Кердо</div>
+      ${chartSVG}
+    </div>
+
+    <div class="stats-row" style="margin-bottom:10px">
+      <div class="stat-tile">
+        <div class="st-label">Максимум</div>
+        <div class="st-val sym">${maxK > 0 ? '+' : ''}${maxK}</div>
+      </div>
+      <div class="stat-tile">
+        <div class="st-label">Минимум</div>
+        <div class="st-val vag">${minK}</div>
+      </div>
+    </div>
+
+    ${advice}
+  `;
+}
+
+function miniChart(data) {
+  if (data.length < 2) return '';
+  const W = 340, H = 90, pL = 4, pR = 4, pT = 10, pB = 10;
+  const kvals = data.map(e => kerdo(e.dia, e.pulse));
+  const kMin = Math.min(-15, ...kvals) - 3;
+  const kMax = Math.max(20, ...kvals) + 3;
+  const kRange = kMax - kMin;
+  const cW = W - pL - pR, cH = H - pT - pB;
+  function xp(i) { return pL + (i / (data.length - 1)) * cW; }
+  function yp(k) { return pT + (1 - (k - kMin) / kRange) * cH; }
+  const y0 = yp(0);
+  let path = data.map((e, i) => `${i===0?'M':'L'}${xp(i).toFixed(1)},${yp(kerdo(e.dia,e.pulse)).toFixed(1)}`).join(' ');
+  let dots = data.map((e, i) => {
+    const k = kerdo(e.dia, e.pulse);
+    const col = k > 5 ? 'var(--danger)' : k < -5 ? 'var(--accent2)' : 'var(--safe)';
+    return `<circle cx="${xp(i).toFixed(1)}" cy="${yp(k).toFixed(1)}" r="3" fill="${col}"/>`;
+  }).join('');
+  return `<svg class="mini-chart" viewBox="0 0 ${W} ${H}">
+    <line x1="${pL}" y1="${y0}" x2="${W-pR}" y2="${y0}" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="3,3"/>
+    <path d="${path}" fill="none" stroke="rgba(124,110,224,0.5)" stroke-width="2"/>
+    ${dots}
+  </svg>`;
+}
+
+// ── ENTER KEY ──
+document.addEventListener('keydown', e => { if (e.key === 'Enter') saveEntry(); });
+</script>
+</body>
+</html>
